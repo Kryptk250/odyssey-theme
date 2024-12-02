@@ -1,56 +1,57 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy ASP.Net Core app to Azure Web App - MyWebApp1234
+name: Deploy .NET app to Azure
 
 on:
   push:
     branches:
-      - main
-  workflow_dispatch:
+      - main  # Trigger deployment on push to the main branch
+  pull_request:
+    branches:
+      - main  # Trigger deployment on pull request to the main branch
 
 jobs:
   build:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up .NET Core
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.x'
-
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
-
-      - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
-
-  deploy:
-    runs-on: windows-latest
-    needs: build
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    runs-on: ubuntu-latest  # You can also use 'windows-latest' depending on your setup
     
     steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: .net-app
-      
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'MyWebApp1234'
-          slot-name: 'Production'
-          package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_2240F2184EB1403CB058062FF1CFBAE7 }}
+    - name: Checkout code
+      uses: actions/checkout@v2  # Checks out the repository code
+    
+    - name: Set up .NET SDK
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: '8.0'  # Change to your desired .NET version
+
+    - name: Restore dependencies
+      run: dotnet restore  # Restores the NuGet packages
+
+    - name: Build the application
+      run: dotnet build --configuration Release  # Builds the app in release mode
+
+    - name: Publish the application
+      run: dotnet publish --configuration Release --output ./publish  # Publishes the app
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: app-artifact
+        path: ./publish  # Uploads the published files for deployment
+    
+  deploy:
+    runs-on: ubuntu-latest  # You can use 'windows-latest' as well
+    needs: build  # Ensure that the build job runs first
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    
+    - name: Download build artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: app-artifact  # Downloads the artifact from the build job
+    
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: <your-app-name>  # Replace with your Azure Web App name
+        publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}  # Publish profile from Azure
+        package: ./publish  # Path to the published app
